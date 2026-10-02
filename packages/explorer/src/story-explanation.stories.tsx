@@ -48,6 +48,18 @@ export const SummaryOnly: ExplanationStory = {
 export const InferredConnection: ExplanationStory = {
   args: { story: { ...story, impact: story.impact.map((edge) => ({ ...edge, level: 'inferred' })) } }
 };
+export const AffectedAreasOnly: ExplanationStory = {
+  args: { story: { ...story, impact: [] } }
+};
+export const CyclicConnections: ExplanationStory = {
+  args: { story: { ...story, impact: [...story.impact, { from: 'screen', to: 'request', level: 'direct', summary: 'The recovery action requests an updated review.', refs: ['waiting'] }] } }
+};
+export const ParallelConnections: ExplanationStory = {
+  args: { story: { ...story, impact: [...story.impact, { from: 'request', to: 'screen', level: 'inferred', summary: 'A clear waiting response may make the first visit easier to understand.', refs: ['response'] }] } }
+};
+export const LongAreaNames: ExplanationStory = {
+  args: { entities: entities.map((entity) => ({ ...entity, label: entity.id === 'request' ? 'Revision-pinned review request and captured source inventory' : 'First review screen with waiting and recovery actions' })) }
+};
 export const UnavailableCodeReference: ExplanationStory = {
   args: { units: new Map() }
 };
@@ -57,4 +69,8 @@ export const CheckoutRecoveryReview: ExplanationStory = {
     entities: demoState.report.entities,
     units: new Map(demoState.source.units.map((unit) => [unit.id, unit]))
   }
+};
+export const NarrowPane: ExplanationStory = {
+  ...CheckoutRecoveryReview,
+  render: (args) => <div className="detail-column" style={{ width: 280, position: 'static', maxHeight: 'none' }}><StoryExplanation {...args} /></div>
 };

@@ -3,7 +3,7 @@
   "displayName": "visus Change Explorer",
   "icon": "icon.png",
   "description": "Explore agent-authored change stories and snapshot evidence.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "engines": { "vscode": "^1.95.0" },
   "main": "./dist/extension.js",

@@ -1,6 +1,7 @@
-import { ArrowRight, ArrowUpRight, Box, ChevronRight, FileCode2 } from 'lucide-react';
+import { ArrowUpRight, Box, ChevronRight, FileCode2 } from 'lucide-react';
 import type { ChangeUnit, Report, Story } from '@visus/core';
 import { Button } from '@/components/motion/button/base';
+import { ImpactDiagram } from '@/components/impact-diagram';
 
 export function StoryExplanation({ story, entities, units, onInspect, editorAvailable }: {
   story: Story;
@@ -12,7 +13,7 @@ export function StoryExplanation({ story, entities, units, onInspect, editorAvai
   const refs = new Set(story.groups.flatMap((group) => group.refs));
   const endpoints = new Set(story.impact.flatMap((edge) => [edge.from, edge.to]));
   const areas = entities.filter((entity) => endpoints.has(entity.id) || entity.refs.some((ref) => refs.has(ref)));
-  const labels = new Map(entities.map((entity) => [entity.id, entity.label]));
+  const unconnectedAreas = areas.filter((entity) => !endpoints.has(entity.id));
   const files = new Map<string, ChangeUnit>();
   const missingRefs: string[] = [];
   for (const ref of refs) {
@@ -32,16 +33,8 @@ export function StoryExplanation({ story, entities, units, onInspect, editorAvai
     {(areas.length > 0 || story.impact.length > 0) && <details className="explanation-disclosure">
       <summary><ChevronRight size={16} className="disclosure-chevron" aria-hidden="true" /><span>What it affects</span><span className="disclosure-meta">{areas.length > 0 ? `${areas.length} ${areas.length === 1 ? 'area' : 'areas'}` : `${story.impact.length} ${story.impact.length === 1 ? 'connection' : 'connections'}`}</span></summary>
       <div className="disclosure-content">
-      {areas.length > 0 && <div className="area-chips" role="group" aria-label="Affected areas">{areas.map((area) => <span className="area-chip" key={area.id}><Box size={14} aria-hidden="true" />{area.label}</span>)}</div>}
-      {story.impact.length > 0 && <div className="connection-list">{story.impact.map((edge, index) => <article className={`change-connection ${edge.level}`} key={`${edge.from}-${edge.to}-${index}`}>
-        <div className="connection-nodes">
-          <div className="connection-node"><span className="node-dot" /><strong>{labels.get(edge.from) ?? edge.from}</strong></div>
-          <ArrowRight className="connection-arrow" size={22} aria-label="affects" />
-          <div className="connection-node destination"><span className="node-dot" /><strong>{labels.get(edge.to) ?? edge.to}</strong></div>
-        </div>
-        <p>{edge.summary}</p>
-        <span className="connection-certainty">{edge.level === 'inferred' ? 'Inferred relationship' : 'Direct relationship'} · author reported</span>
-      </article>)}</div>}
+      {story.impact.length > 0 && <ImpactDiagram impact={story.impact} entities={areas} units={units} onInspect={onInspect} editorAvailable={editorAvailable} />}
+      {unconnectedAreas.length > 0 && <div className="area-chips" role="group" aria-label="Other affected areas">{unconnectedAreas.map((area) => <span className="area-chip" key={area.id}><Box size={14} aria-hidden="true" />{area.label}</span>)}</div>}
       </div>
     </details>}
 
