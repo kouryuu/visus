@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "revision": "r-invalid-demo",
+  "parent": null,
+  "scope": "scope-synthetic",
+  "sourceId": "s-demo-01",
+  "publishedAt": "2026-10-01T12:00:00.000Z",
+  "author": { "kind": "agent", "name": "Example agent" },
+  "entities": [],
+  "stories": [
+    {
+      "id": "dangling-story",
+      "title": "References a missing unit",
+      "summary": "This sample demonstrates source-aware validation.",
+      "groups": [{ "kind": "implementation", "refs": ["u-does-not-exist"] }],
+      "decisions": [],
+      "impact": []
+    }
+  ],
+  "exclusions": []
+}

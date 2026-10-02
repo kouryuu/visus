@@ -1,0 +1,8 @@
+{
+  "name": "@diff-vis/local",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "diff-vis": "./dist/cli.js" },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "dev": "vite --config ../../packages/explorer/vite.config.ts --host 127.0.0.1" },
+  "dependencies": { "@diff-vis/core": "0.1.0", "@modelcontextprotocol/server": "2.2.0", "zod": "^4.1.12" }
+}

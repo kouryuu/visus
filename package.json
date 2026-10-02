@@ -1,0 +1,25 @@
+{
+  "name": "diff-vis",
+  "version": "0.1.0",
+  "private": true,
+  "bin": { "diff-vis": "./apps/local/dist/cli.js" },
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run build --workspace @diff-vis/core && npm run typecheck --workspaces --if-present",
+    "schema": "npm run schema --workspace @diff-vis/core",
+    "fixture:large": "node scripts/create-large-fixture.mjs",
+    "dev": "npm run dev --workspace @diff-vis/local"
+  },
+  "engines": { "node": ">=22.12" },
+  "devDependencies": {
+    "@types/node": "^20.17.30",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.7",
+    "@types/vscode": "^1.103.0",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}

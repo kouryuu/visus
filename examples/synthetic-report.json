@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "revision": "r-demo-02",
+  "parent": "r-demo-01",
+  "scope": "scope-synthetic",
+  "sourceId": "s-demo-01",
+  "publishedAt": "2026-10-01T12:00:00.000Z",
+  "author": { "kind": "agent", "name": "Example agent" },
+  "entities": [
+    { "id": "writer", "label": "Shared writer", "refs": ["u-demo-01"] },
+    { "id": "flush", "label": "Concurrent flush calls", "refs": [] }
+  ],
+  "stories": [
+    {
+      "id": "guard-shared-writer",
+      "title": "Serialize shared writes",
+      "summary": "The write path now guards shared state while keeping input preparation outside the critical section.",
+      "groups": [
+        { "kind": "implementation", "refs": ["u-demo-01"] },
+        { "kind": "tests", "refs": ["u-demo-02"] },
+        { "kind": "docs", "refs": ["u-demo-03"] }
+      ],
+      "decisions": [
+        { "summary": "Keep the guard around state mutation.", "rationale": "The shared write must be serialized; preparation does not access the shared state.", "inspect": "Check each write entry point and the concurrent-call case.", "refs": ["u-demo-01", "u-demo-02"] }
+      ],
+      "impact": [
+        { "from": "writer", "to": "flush", "level": "direct", "summary": "Calls reaching the shared writer run one at a time.", "refs": ["u-demo-01"] },
+        { "from": "flush", "to": "writer", "level": "inferred", "summary": "Concurrent batches may wait longer for the guarded write.", "refs": ["u-demo-01"] }
+      ]
+    }
+  ],
+  "exclusions": []
+}

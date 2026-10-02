@@ -1,0 +1,9 @@
+node_modules/
+dist/
+apps/vscode/media/
+packages/explorer/media/
+coverage/
+.diff-vis/
+*.vsix
+.DS_Store
+docs/
