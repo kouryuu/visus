@@ -2,6 +2,7 @@ node_modules/
 dist/
 apps/vscode/media/
 packages/explorer/media/
+packages/explorer/storybook-static/
 coverage/
 .diff-vis/
 *.vsix

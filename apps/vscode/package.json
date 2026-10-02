@@ -2,7 +2,7 @@
   "name": "diff-vis-vscode",
   "displayName": "diff-vis Change Explorer",
   "description": "Explore agent-authored change stories and snapshot evidence.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "engines": { "vscode": "^1.95.0" },
   "main": "./dist/extension.js",

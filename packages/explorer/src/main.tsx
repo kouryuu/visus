@@ -1,14 +1,32 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Button } from '@/components/motion/button/base';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { AnimatedBadge, type AnimatedBadgeStatus } from '@/components/motion/animated-badge';
+import { CenterMorphModal, CenterMorphModalClose, CenterMorphModalContent } from '@/components/motion/center-morph-modal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/motion/select';
+import { StoryExplanation } from '@/components/story-explanation';
+import { demoEvidenceText, demoState } from '@/lib/demo';
+import { ArrowUpRight, ChevronRight, FileCode2, GitBranch, GitCompareArrows, X } from 'lucide-react';
 import type { ChangeUnit, Report, Source, Story } from '@diff-vis/core';
 import './style.css';
 
+declare global {
+  interface ImportMetaEnv { readonly DEMO_MODE?: string }
+  interface ImportMeta { readonly env: ImportMetaEnv }
+}
+
 type State = { report: Report | null; source: Source | null; status: string; pending: string[] };
+type EvidenceView = 'before' | 'after' | 'compare';
+type EvidencePreview = { unit: ChangeUnit; beforeText?: string; afterText?: string; binary: boolean; view: EvidenceView };
 type Bridge = { getState: () => Promise<State>; evidence: (sourceId: string, ref: string, side: 'before' | 'after') => Promise<{ unit: ChangeUnit; text?: string; binary: boolean }>; subscribe: (callback: () => void) => () => void; openEvidence?: (sourceId: string, ref: string) => void };
 declare global { interface Window { diffVisBridge?: Bridge; diffVisSnapshot?: { report: Report; source: Source } } }
-const kindLabel: Record<string, string> = { implementation: 'Implementation', tests: 'Tests', config: 'Configuration', docs: 'Docs', refactor: 'Refactor', dependencies: 'Dependencies', generated: 'Generated', other: 'Other' };
+const kindLabel: Record<string, string> = { implementation: 'Implementation', tests: 'Tests', config: 'Configuration', docs: 'Docs', refactor: 'Refactor', dependencies: 'Dependencies', generated: 'Generated', other: 'Other', multiple: 'Multiple categories' };
+const kindEmoji: Record<string, string> = { implementation: '🛠️', tests: '👨‍🔬', config: '⚙️', docs: '📖', refactor: '🧹', dependencies: '📦', generated: '🤖', other: '🧩', multiple: '🗂️' };
+const demoMode = import.meta.env.DEMO_MODE === '1';
 
 async function getState(): Promise<State> {
+  if (demoMode) return demoState;
   if (window.diffVisBridge) return window.diffVisBridge.getState();
   if (window.diffVisSnapshot) {
     const { report, source } = window.diffVisSnapshot;
@@ -26,70 +44,126 @@ function App(): React.JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
   const [grouping, setGrouping] = useState<'story' | 'category'>('story');
   const [filter, setFilter] = useState('all');
-  const [evidence, setEvidence] = useState<{ unit: ChangeUnit; text?: string; side: string } | null>(null);
+  const [evidence, setEvidence] = useState<EvidencePreview | null>(null);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
+  const detailRef = useRef<HTMLElement | null>(null);
+  const closeEvidence = useCallback((open: boolean) => { if (!open) setEvidence(null); }, []);
 
   useEffect(() => {
     let alive = true;
-    const refresh = (): void => { void getState().then((next) => { if (!alive) return; setData(next); setError(''); setSelected((current) => current && next.report?.stories.some((story) => story.id === current) ? current : next.report?.stories[0]?.id ?? null); }).catch((reason: unknown) => { if (alive) setError(reason instanceof Error ? reason.message : 'Unable to load the review.'); }); };
-    refresh(); const unsubscribe = window.diffVisBridge?.subscribe(refresh); const events = window.diffVisBridge ? null : new EventSource('/api/events'); if (events) events.onmessage = refresh; const timer = window.setInterval(refresh, 10000);
-    return () => { alive = false; unsubscribe?.(); events?.close(); window.clearInterval(timer); };
-  }, []);
+    const refresh = (): void => { void getState().then((next) => {
+      if (!alive) return;
+      setData(next); setError('');
+      setSelected((current) => current && next.report?.stories.some((story) => story.id === current) ? current : null);
+    }).catch((reason: unknown) => {
+      if (!alive) return;
+      setData((current) => ({ ...current, status: 'error' }));
+      setError(reason instanceof Error ? reason.message : 'Unable to load the review.');
+    }); };
+    refresh(); const unsubscribe = demoMode ? undefined : window.diffVisBridge?.subscribe(refresh); const events = demoMode || window.diffVisBridge ? null : new EventSource('/api/events'); if (events) events.onmessage = refresh; const timer = demoMode ? undefined : window.setInterval(refresh, 10000);
+    return () => { alive = false; unsubscribe?.(); events?.close(); if (timer !== undefined) window.clearInterval(timer); };
+  }, [retryKey]);
 
   const report = data.report; const source = data.source;
   const stories = useMemo(() => (report?.stories ?? []).filter((story) => filter === 'all' || story.groups.some((group) => group.kind === filter)), [report, filter]);
-  const currentStory = stories.find((story) => story.id === selected) ?? stories[0];
+  const currentStory = (selected ? stories.find((story) => story.id === selected) : undefined) ?? stories[0];
   const lookup = useMemo(() => new Map(source?.units.map((unit) => [unit.id, unit]) ?? []), [source]);
 
-  async function openEvidence(ref: string, side: 'before' | 'after'): Promise<void> {
+  useEffect(() => { detailRef.current?.scrollTo({ top: 0 }); }, [currentStory?.id]);
+
+  async function openEvidence(ref: string): Promise<void> {
     if (!report) return;
-    let value: { unit: ChangeUnit; text?: string; binary: boolean };
-    if (window.diffVisBridge) value = await window.diffVisBridge.evidence(report.sourceId, ref, side);
-    else { const response = await fetch(`/api/evidence?source=${encodeURIComponent(report.sourceId)}&ref=${encodeURIComponent(ref)}&side=${side}`); if (!response.ok) { setError('Evidence could not be loaded for this change.'); return; } value = await response.json() as typeof value; }
-    setEvidence({ unit: value.unit, ...(value.text !== undefined ? { text: value.text } : {}), side });
+    if (window.diffVisBridge?.openEvidence) { window.diffVisBridge.openEvidence(report.sourceId, ref); return; }
+    const unit = source?.units.find((entry) => entry.id === ref);
+    if (!unit) { setError('Evidence could not be loaded for this change.'); return; }
+    setError(''); setEvidenceLoading(true);
+    setEvidence({ unit, binary: unit.kind === 'binary', view: unit.before && unit.after ? 'compare' : unit.before ? 'before' : 'after' });
+    try {
+      const loadSide = async (side: 'before' | 'after'): Promise<{ text?: string; binary: boolean }> => {
+        if (window.diffVisBridge) {
+          const result = await window.diffVisBridge.evidence(report.sourceId, ref, side);
+          return { ...(result.text !== undefined ? { text: result.text } : {}), binary: result.binary };
+        }
+        if (demoMode) {
+          const text = demoEvidenceText[ref]?.[side];
+          return { ...(text !== undefined ? { text } : {}), binary: false };
+        }
+        const response = await fetch(`/api/evidence?source=${encodeURIComponent(report.sourceId)}&ref=${encodeURIComponent(ref)}&side=${side}`);
+        if (!response.ok) throw new Error('Evidence could not be loaded for this change.');
+        const result = await response.json() as { text?: string; binary: boolean };
+        return { ...(result.text !== undefined ? { text: result.text } : {}), binary: result.binary };
+      };
+      const [before, after] = await Promise.all([
+        unit.before ? loadSide('before') : Promise.resolve(undefined),
+        unit.after ? loadSide('after') : Promise.resolve(undefined)
+      ]);
+      setEvidence((current) => current?.unit.id === ref ? { ...current, ...(before?.text !== undefined ? { beforeText: before.text } : {}), ...(after?.text !== undefined ? { afterText: after.text } : {}), binary: Boolean(before?.binary || after?.binary) } : current);
+    } catch (reason) {
+      setEvidence(null);
+      setError(reason instanceof Error ? reason.message : 'Evidence could not be loaded for this change.');
+    } finally { setEvidenceLoading(false); }
   }
 
-  const allKinds = [...new Set(source?.units.map((unit) => categoryOf(unit.newPath ?? unit.oldPath ?? '')) ?? [])];
-  const storyCards = grouping === 'story' ? stories.map((story) => <StoryCard key={story.id} story={story} units={lookup} selected={story.id === currentStory?.id} onSelect={() => setSelected(story.id)} onEvidence={openEvidence} />) : categoryGroups(stories).map(([kind, entries]) => <section className="category-group" key={kind}><h2>{kindLabel[kind] ?? kind}</h2>{entries.map((story) => <StoryCard key={story.id} story={story} units={lookup} selected={story.id === currentStory?.id} onSelect={() => setSelected(story.id)} onEvidence={openEvidence} />)}</section>);
+  function selectStory(id: string): void {
+    setSelected(id);
+    if (window.matchMedia('(max-width: 900px)').matches) requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+      detailRef.current?.focus();
+    });
+  }
 
-  return <main className="shell">
-    <header className="topbar"><div><span className="eyebrow">CHANGE REVIEW</span><h1>{source?.rootName ?? 'diff-vis'}</h1><p className="subhead">{source ? `${source.branch ?? 'Detached HEAD'} · compared with ${source.baseRef}` : 'Agent-authored guide to the changes'}</p></div><div className="status-block"><span className={`status ${data.status}`}>{statusLabel(data.status)}</span>{report ? <time className="published" dateTime={report.publishedAt} title={new Date(report.publishedAt).toLocaleString()}>Published {relativeTime(report.publishedAt)}</time> : <span className="published">No report published</span>}{source && <span className="scope">{source.units.length} change units</span>}</div></header>
+  function changeStoryFilter(next: string): void {
+    setFilter(next);
+    const matching = (report?.stories ?? []).filter((story) => next === 'all' || story.groups.some((group) => group.kind === next));
+    const currentId = currentStory?.id;
+    const nextStory = (currentId && matching.some((story) => story.id === currentId) ? currentId : matching[0]?.id) ?? null;
+    setSelected(nextStory);
+  }
+  const allKinds = [...new Set(report?.stories.flatMap((story) => story.groups.map((group) => group.kind)) ?? [])];
+  const storyCards = grouping === 'story' ? stories.map((story) => <StoryCard key={story.id} story={story} selected={story.id === currentStory?.id} onSelect={() => selectStory(story.id)} />) : categoryGroups(stories).map(([kind, entries]) => <section className="category-group" key={kind}><h2><span aria-hidden="true">{kindEmoji[kind]} </span>{kindLabel[kind] ?? kind}</h2>{entries.map((story) => <StoryCard key={story.id} story={story} selected={story.id === currentStory?.id} onSelect={() => selectStory(story.id)} />)}</section>);
+
+  return <><main className="shell" inert={evidence !== null}>
+    <header className="topbar"><div><span className="eyebrow brand"><GitCompareArrows size={15} aria-hidden="true" /> DIFF-VIS / CHANGE REVIEW</span><h1>{source?.rootName ?? 'diff-vis'}</h1><p className="subhead">{source ? <><GitBranch size={14} aria-hidden="true" /><span>{source.branch ?? 'Detached HEAD'}</span><span className="comparison">compared with <strong>{source.baseRef}</strong></span></> : 'Agent-authored guide to the changes'}</p></div><div className="status-block"><AnimatedBadge status={reviewBadgeStatus(data.status)} className={`status ${data.status}`} role="status">{statusLabel(data.status)}</AnimatedBadge>{report ? <time className="published" dateTime={report.publishedAt} title={new Date(report.publishedAt).toLocaleString()}>{demoMode ? 'Synthetic sample' : `Published ${relativeTime(report.publishedAt)}`}</time> : <span className="published">No report published</span>}</div></header>
     {error && <div className="notice error" role="alert">{error}</div>}
     {data.status === 'loading' && <div className="empty">Loading the current review…</div>}
-    {!report && data.status !== 'loading' && <section className="empty-card"><h2>Your change inventory is ready</h2><p>{source ? `${source.units.length} captured units are waiting for an agent-authored story.` : 'Start the local review service in a Git worktree to capture changes.'}</p><p>Run <code>diff-vis prepare</code>, publish stories with the local MCP tools, then refresh this view.</p></section>}
-    {report && <div className="layout">
-      <section className="main-column"><div className="toolbar"><div className="segmented" aria-label="Story grouping"><button className={grouping === 'story' ? 'active' : ''} onClick={() => setGrouping('story')}>By story</button><button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>By category</button></div><label className="filter">Category <select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All changes</option>{[...new Set([...allKinds, ...report.stories.flatMap((story) => story.groups.map((group) => group.kind))])].map((kind) => <option key={kind} value={kind}>{kindLabel[kind] ?? kind}</option>)}</select></label></div>
-        <div className="story-list">{storyCards}{stories.length === 0 && <p className="muted">No stories match this category.</p>}</div>
-        {(data.pending.length > 0 || report.exclusions.length > 0) && <section className="unexplained"><h2>Unexplained changes</h2><p>{data.pending.length} units need a story or an explicit exclusion.</p>{data.pending.map((ref) => <button className="unit-row" key={ref} onClick={() => void openEvidence(ref, 'after')}>{ref} <span>{unitName(lookup.get(ref))}</span></button>)}{report.exclusions.map((entry) => <p className="exclusion" key={entry.refs.join(',')}><strong>Excluded:</strong> {entry.reason} <span>{entry.refs.join(', ')}</span></p>)}</section>}
+    {data.status === 'error' && <div className="empty-card"><h2>Review unavailable</h2><p>Check that the local review service is running, then try again.</p><Button variant="secondary" className="beui-button" onClick={() => setRetryKey((value) => value + 1)}>Try again</Button></div>}
+    {!report && data.status !== 'loading' && data.status !== 'error' && <section className="empty-card"><h2>{source ? 'Your change inventory is ready' : 'Start a local review'}</h2><p>{source ? `${source.units.length} captured units are waiting for an agent-authored story.` : 'Start the local review service in a Git worktree to capture changes.'}</p><p>Run <code>diff-vis prepare</code> or <code>node apps/local/dist/cli.js prepare --root &lt;worktree&gt;</code>, then publish stories with the local MCP tools.</p></section>}
+    {report && <Tabs value={grouping} variant="segment" className="review-content" onValueChange={(value) => setGrouping(value as 'story' | 'category')}>
+      <TabsContent value={grouping} className="review-panel"><div className="layout">
+      <section className="main-column" aria-label="Change stories"><div className="list-heading"><h2>Change stories</h2><span className="filter-count" role="status">{stories.length}{filter !== 'all' && ` of ${report.stories.length}`} {stories.length === 1 ? 'story' : 'stories'}</span></div>
+        <details className="story-options"><summary><ChevronRight size={16} className="disclosure-chevron" aria-hidden="true" /><span>Filter &amp; group</span>{(filter !== 'all' || grouping !== 'story') && <span className="disclosure-meta">{[filter !== 'all' ? kindLabel[filter] ?? filter : '', grouping !== 'story' ? 'By category' : ''].filter(Boolean).join(' · ')}</span>}</summary><div className="toolbar"><TabsList ariaLabel="Story grouping" className="grouping-tabs" wrapperClassName="grouping-control"><TabsTrigger value="story">By story</TabsTrigger><TabsTrigger value="category">By category</TabsTrigger></TabsList><div className="filter"><span className="filter-label">Category</span><Select value={filter} onValueChange={changeStoryFilter} className="category-select"><SelectTrigger ariaLabel="Filter stories by category"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All categories</SelectItem>{allKinds.map((kind) => <SelectItem key={kind} value={kind}>{kindLabel[kind] ?? kind}</SelectItem>)}</SelectContent></Select></div></div></details>
+        <div className="story-list">{storyCards}{stories.length === 0 && <div className="filter-empty"><p>No stories match {kindLabel[filter] ?? filter}. Unexplained changes below are outside this story filter.</p><Button variant="secondary" className="beui-button" onClick={() => changeStoryFilter('all')}>Show all stories</Button></div>}</div>
+        {(data.pending.length > 0 || report.exclusions.length > 0) && <details className={`unexplained ${data.pending.length ? 'has-pending' : ''}`}><summary><ChevronRight size={16} className="disclosure-chevron" aria-hidden="true" /><span>{data.pending.length ? `${data.pending.length} ${data.pending.length === 1 ? 'change needs' : 'changes need'} explanation` : `${report.exclusions.length} excluded ${report.exclusions.length === 1 ? 'entry' : 'entries'}`}</span>{data.pending.length > 0 && report.exclusions.length > 0 && <span className="disclosure-meta">{report.exclusions.length} excluded</span>}</summary>{data.pending.length > 0 && <p>These changes need a story or an explicit exclusion.</p>}{data.pending.map((ref) => <button className="unit-row" key={ref} onClick={() => void openEvidence(ref)}><FileCode2 size={16} aria-hidden="true" /><span>{unitName(lookup.get(ref))}</span><ArrowUpRight size={15} aria-hidden="true" /></button>)}{report.exclusions.map((entry) => <p className="exclusion" key={entry.refs.join(',')}><strong>Excluded:</strong> {entry.reason} <span>{entry.refs.join(', ')}</span></p>)}</details>}
       </section>
-      <aside className="detail-column">{currentStory ? <><div className="detail-heading"><span className="eyebrow">STORY DETAILS</span><h2>{currentStory.title}</h2></div><p className="story-summary">{currentStory.summary}</p><section className="detail-section"><h3>Decisions</h3>{currentStory.decisions.length ? currentStory.decisions.map((item, index) => <article className="decision" key={`${item.summary}-${index}`}><strong>{item.summary}</strong>{item.rationale && <p>{item.rationale}</p>}{item.inspect && <p className="inspect"><span>Inspect</span>{item.inspect}</p>}</article>) : <p className="muted">No decision notes were added.</p>}</section><section className="detail-section"><h3>Change evidence</h3>{currentStory.groups.flatMap((group) => group.refs.map((ref) => ({ group, ref }))).map(({ group, ref }) => <EvidenceRow key={`${group.kind}:${ref}`} kind={group.kind} unit={lookup.get(ref)} onEvidence={openEvidence} />)}</section><section className="detail-section"><h3>Impact map</h3><ImpactMap story={currentStory} entities={report.entities} /></section></> : <p className="muted">Choose a story to see its detail.</p>}</aside>
-    </div>}
-    {evidence && <div className="modal-backdrop" role="presentation" onClick={() => setEvidence(null)}><section className="evidence-modal" role="dialog" aria-modal="true" aria-label="Captured evidence" onClick={(event) => event.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">{evidence.side.toUpperCase()} SNAPSHOT</span><h2>{evidence.unit.newPath ?? evidence.unit.oldPath ?? evidence.unit.id}</h2></div><div className="modal-actions">{window.diffVisBridge?.openEvidence && report && <button className="open-editor" onClick={() => window.diffVisBridge?.openEvidence?.(report.sourceId, evidence.unit.id)}>Open snapshot diff in editor</button>}<button className="icon-button" onClick={() => setEvidence(null)} aria-label="Close evidence">×</button></div></div><p className="muted">{evidence.unit.kind}{evidence.unit.before ? ` · lines ${evidence.unit.before.start}–${evidence.unit.before.end}` : ''}{evidence.unit.after ? ` · lines ${evidence.unit.after.start}–${evidence.unit.after.end}` : ''}</p><pre>{evidence.text ?? 'No text preview is available for this binary or missing endpoint.'}</pre></section></div>}
-    <footer>Story explanations reflect the publishing agent’s account. Freshness and coverage do not verify behavior.</footer>
-  </main>;
+      <aside className="detail-column" ref={detailRef} tabIndex={-1} aria-label="Change explanation">{currentStory ? <StoryExplanation key={currentStory.id} story={currentStory} entities={report.entities} units={lookup} editorAvailable={Boolean(window.diffVisBridge?.openEvidence)} onInspect={(ref) => void openEvidence(ref)} /> : <p className="muted">Choose a story to understand the change.</p>}</aside>
+    </div></TabsContent></Tabs>}
+  </main><CenterMorphModal open={evidence !== null} onOpenChange={closeEvidence}><CenterMorphModalContent ariaLabel={evidence ? `Change evidence: ${unitName(evidence.unit)}` : 'Change evidence'} showCloseButton={false} className="evidence-modal" backdropClassName="evidence-backdrop">
+    {evidence && <><div className="modal-head"><div><span className="eyebrow">CHANGE EVIDENCE</span><h2>{unitName(evidence.unit)}</h2><p className="evidence-summary">{evidence.unit.summary}</p></div><div className="modal-actions">{window.diffVisBridge?.openEvidence && report && <Button variant="outline" className="beui-button open-editor" onClick={() => window.diffVisBridge?.openEvidence?.(report.sourceId, evidence.unit.id)}>Open snapshot diff in editor</Button>}<CenterMorphModalClose><Button variant="ghost" size="icon" className="close-evidence" aria-label="Close evidence"><X size={18} aria-hidden="true" /></Button></CenterMorphModalClose></div></div>
+      <Tabs value={evidence.view} variant="segment" className="evidence-tabs" onValueChange={(view) => setEvidence((current) => current ? { ...current, view: view as EvidenceView } : current)}>
+        <TabsList className="evidence-tab-list" ariaLabel="Evidence version">
+          {evidence.unit.before && <TabsTrigger value="before">Before</TabsTrigger>}
+          {evidence.unit.after && <TabsTrigger value="after">After</TabsTrigger>}
+          {evidence.unit.before && evidence.unit.after && <TabsTrigger value="compare">Compare</TabsTrigger>}
+        </TabsList>
+      <TabsContent value={evidence.view} className="evidence-panel">
+      <p className="muted">{evidence.view === 'compare' ? 'Before and after snapshots' : `${evidence.view === 'before' ? 'Before' : 'After'} snapshot`}{evidence.view === 'before' && evidence.unit.before ? ` · lines ${evidence.unit.before.start}–${evidence.unit.before.end}` : ''}{evidence.view === 'after' && evidence.unit.after ? ` · lines ${evidence.unit.after.start}–${evidence.unit.after.end}` : ''}</p>
+      {evidenceLoading ? <div className="evidence-loading" role="status"><AnimatedBadge status="loading">Loading captured evidence…</AnimatedBadge></div> : evidence.binary ? <p className="muted">Text preview is unavailable for this binary change.</p> : evidence.view === 'compare' ? <div className="evidence-compare"><section className="before-snapshot"><h3>Before <span>{lineRange(evidence.unit.before)}</span></h3><pre tabIndex={0} aria-label="Before snapshot">{evidence.beforeText ?? 'No before text snapshot is available.'}</pre></section><section className="after-snapshot"><h3>After <span>{lineRange(evidence.unit.after)}</span></h3><pre tabIndex={0} aria-label="After snapshot">{evidence.afterText ?? 'No after text snapshot is available.'}</pre></section></div> : <pre tabIndex={0} aria-label={`${evidence.view === 'before' ? 'Before' : 'After'} snapshot`}>{evidence.view === 'before' ? evidence.beforeText ?? 'No before text snapshot is available.' : evidence.afterText ?? 'No after text snapshot is available.'}</pre>}
+      </TabsContent></Tabs></>}
+    </CenterMorphModalContent></CenterMorphModal></>;
 }
 
-function StoryCard({ story, units, selected, onSelect, onEvidence }: { story: Story; units: Map<string, ChangeUnit>; selected: boolean; onSelect: () => void; onEvidence: (ref: string, side: 'before' | 'after') => Promise<void> }): React.JSX.Element {
+function StoryCard({ story, selected, onSelect }: { story: Story; selected: boolean; onSelect: () => void }): React.JSX.Element {
   const groups = [...new Set(story.groups.map((group) => group.kind))];
-  return <article className={`story-card ${selected ? 'selected' : ''}`}><button className="story-select" onClick={onSelect} aria-expanded={selected}><div className="card-title"><h2>{story.title}</h2><span className="chevron">{selected ? '−' : '+'}</span></div><p>{story.summary}</p><div className="badges">{groups.map((kind) => <span className={`badge ${kind}`} key={kind}><span aria-hidden="true">{kindGlyph(kind)}</span>{kindLabel[kind] ?? kind}</span>)}</div><div className="indicators">{story.decisions.length > 0 && <span>{story.decisions.length} decision{story.decisions.length === 1 ? '' : 's'}</span>}{story.impact.length > 0 && <span>{story.impact.length} impact links</span>}</div></button>{selected && <div className="card-evidence">{story.groups.map((group) => <div key={group.kind} className="group-line"><strong>{kindLabel[group.kind] ?? group.kind}</strong>{group.refs.map((ref) => <button key={ref} onClick={() => void onEvidence(ref, 'after')}>{ref} · {unitName(units.get(ref))}</button>)}</div>)}</div>}</article>;
+  return <article className={`story-card ${selected ? 'selected' : ''}`}><button className="story-select" onClick={onSelect} aria-pressed={selected}><div className="card-title"><h2>{story.title}</h2><ChevronRight size={16} aria-hidden="true" /></div>{groups.length > 0 && <p className="story-category">{groups.map((kind, index) => <React.Fragment key={kind}>{index > 0 && ' · '}<span aria-hidden="true">{kindEmoji[kind]} </span>{kindLabel[kind] ?? kind}</React.Fragment>)}</p>}</button></article>;
 }
 
-function EvidenceRow({ kind, unit, onEvidence }: { kind: string; unit: ChangeUnit | undefined; onEvidence: (ref: string, side: 'before' | 'after') => Promise<void> }): React.JSX.Element {
-  if (!unit) return <p className="error-text">Referenced evidence is unavailable.</p>;
-  return <div className="evidence-row"><span className={`badge ${kind}`}>{kindGlyph(kind)} {kindLabel[kind] ?? kind}</span><span className="path-label">{unitName(unit)}</span><button onClick={() => void onEvidence(unit.id, unit.after ? 'after' : 'before')}>Open</button></div>;
-}
-
-function ImpactMap({ story, entities }: { story: Story; entities: Report['entities'] }): React.JSX.Element {
-  const labels = new Map(entities.map((entity) => [entity.id, entity.label]));
-  return <><svg className="impact-map" viewBox="0 0 360 126" role="img" aria-label="Impact links for this story"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" /></marker></defs>{story.impact.slice(0, 5).map((edge, index) => { const y = 22 + index * 22; const inferred = edge.level === 'inferred'; return <g key={`${edge.from}-${edge.to}-${index}`}><line x1="108" y1={y} x2="244" y2={y} className={inferred ? 'inferred-edge' : 'direct-edge'} markerEnd="url(#arrow)"/><text x="10" y={y + 4}>{fit(labels.get(edge.from) ?? edge.from)}</text><text x="250" y={y + 4}>{fit(labels.get(edge.to) ?? edge.to)}</text><text x="171" y={y - 4} className="edge-label">{inferred ? 'inferred' : 'direct'}</text></g>; })}</svg>{story.impact.length ? <ul className="impact-list">{story.impact.map((edge, index) => <li key={`${edge.from}-${edge.to}-${index}`}><span className={edge.level}>{edge.level}</span>{edge.summary}</li>)}</ul> : <p className="muted">No impact links were added.</p>}</>;
-}
-
-function categoryGroups(stories: Story[]): Array<[string, Story[]]> { const groups = new Map<string, Story[]>(); for (const story of stories) for (const group of story.groups) { const entries = groups.get(group.kind) ?? []; if (!entries.some((entry) => entry.id === story.id)) entries.push(story); groups.set(group.kind, entries); } return [...groups.entries()]; }
-function categoryOf(filename: string): string { if (/\.(test|spec)\.[^./]+$|__tests__/.test(filename)) return 'tests'; if (/\.(md|rst|txt)$/.test(filename)) return 'docs'; if (/lock|\.ya?ml$|\.toml$|\.json$|\.ini$/.test(filename)) return 'config'; return 'implementation'; }
+function categoryGroups(stories: Story[]): Array<[string, Story[]]> { const groups = new Map<string, Story[]>(); for (const story of stories) { const kinds = [...new Set(story.groups.map((group) => group.kind))]; const category = kinds.length > 1 ? 'multiple' : kinds[0] ?? 'other'; const entries = groups.get(category) ?? []; entries.push(story); groups.set(category, entries); } return [...groups.entries()]; }
+function reviewBadgeStatus(status: string): AnimatedBadgeStatus { return ({ fresh: 'success', stale: 'danger', incomplete: 'warning', error: 'danger', loading: 'loading', demo: 'info' } as Record<string, AnimatedBadgeStatus>)[status] ?? 'neutral'; }
+function lineRange(range?: { start: number; end: number }): string { return range ? `Lines ${range.start}–${range.end}` : ''; }
 function unitName(unit?: ChangeUnit): string { return unit?.newPath ?? unit?.oldPath ?? 'Change details'; }
-function kindGlyph(kind: string): string { return ({ implementation: '◆', tests: '✓', config: '⚙', docs: '¶', refactor: '↻', dependencies: '⇄', generated: '▦', other: '•' } as Record<string, string>)[kind] ?? '•'; }
-function statusLabel(status: string): string { return ({ fresh: 'Fresh · fully covered', stale: 'Source has changed', incomplete: 'Incomplete coverage', missing: 'Waiting for stories', loading: 'Loading', snapshot: 'Portable snapshot · freshness not checked' } as Record<string, string>)[status] ?? status; }
-function fit(value: string): string { return value.length > 18 ? `${value.slice(0, 16)}…` : value; }
+function statusLabel(status: string): string { return ({ fresh: 'Fresh · fully covered', stale: 'Source has changed', incomplete: 'Incomplete coverage', missing: 'Waiting for stories', loading: 'Loading', error: 'Review unavailable', snapshot: 'Portable snapshot · freshness not checked', demo: 'Demo preview' } as Record<string, string>)[status] ?? status; }
 function relativeTime(value: string): string { const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000); const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [['year', 31_536_000], ['month', 2_592_000], ['week', 604_800], ['day', 86_400], ['hour', 3_600], ['minute', 60]]; const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto', style: 'short' }); for (const [unit, size] of units) if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit); return formatter.format(seconds, 'second'); }
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
