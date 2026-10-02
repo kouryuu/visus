@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "updateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceId": {
+      "type": "string"
+    },
+    "expectedRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "author": {
+      "default": "agent",
+      "type": "string"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "refs": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      }
+    },
+    "stories": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groups": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "implementation",
+                    "tests",
+                    "config",
+                    "docs",
+                    "refactor",
+                    "dependencies",
+                    "generated",
+                    "other"
+                  ]
+                },
+                "refs": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "refs"
+              ]
+            }
+          },
+          "decisions": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "inspect": {
+                  "type": "string"
+                },
+                "refs": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "summary"
+              ]
+            }
+          },
+          "impact": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "direct",
+                    "inferred"
+                  ]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "refs": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "from",
+                "to",
+                "level",
+                "summary"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "groups"
+        ]
+      }
+    },
+    "removeStories": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "removeEntities": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "refs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refs",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": [
+    "updateId",
+    "sourceId",
+    "expectedRevision"
+  ]
+}

@@ -1,15 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { z } from 'zod';
-import { PublishUpdateSchema } from '@diff-vis/core';
-import type { ReviewStore } from '@diff-vis/core';
+import { PublishUpdateSchema } from '@visus/core';
+import type { ReviewStore } from '@visus/core';
 
 const result = (value: Record<string, unknown>) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value) }], structuredContent: value });
 
 export async function startMcp(store: ReviewStore): Promise<void> {
   await store.initialize();
   serveStdio(() => {
-    const server = new McpServer({ name: 'diff-vis', version: '0.1.0' });
+    const server = new McpServer({ name: 'visus', version: '0.1.0' });
     server.registerTool('prepare_review', {
       description: 'Capture the current local comparison and return a page of compact change-unit IDs for story publication.',
       inputSchema: z.object({ base: z.string().optional(), offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(500).default(100) })

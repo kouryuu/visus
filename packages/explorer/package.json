@@ -1,5 +1,5 @@
 {
-  "name": "@diff-vis/explorer",
+  "name": "@visus/explorer",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@diff-vis/core": "0.1.0",
+    "@visus/core": "0.1.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.49.0",
     "motion": "^13.5.0",

@@ -5,7 +5,7 @@ import '../src/style.css';
 const preview: Preview = {
   decorators: [(Story) => createElement('div', { className: 'dark' }, createElement(Story))],
   parameters: {
-    backgrounds: { default: 'diff-vis dark', values: [{ name: 'diff-vis dark', value: '#080a0d' }] },
+    backgrounds: { default: 'visus dark', values: [{ name: 'visus dark', value: '#080a0d' }] },
     controls: { expanded: true }
   }
 };

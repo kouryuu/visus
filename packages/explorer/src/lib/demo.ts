@@ -1,4 +1,4 @@
-import type { ChangeUnit, Report, Source } from '@diff-vis/core';
+import type { ChangeUnit, Report, Source } from '@visus/core';
 
 const files: Array<{
   id: string;

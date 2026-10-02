@@ -1,9 +1,9 @@
 {
-  "name": "diff-vis",
+  "name": "visus",
   "version": "0.1.0",
   "private": true,
   "bin": {
-    "diff-vis": "./apps/local/dist/cli.js"
+    "visus": "./apps/local/dist/cli.js"
   },
   "type": "module",
   "workspaces": [
@@ -12,13 +12,13 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run build --workspace @diff-vis/core && npm run typecheck --workspaces --if-present",
-    "schema": "npm run schema --workspace @diff-vis/core",
+    "typecheck": "npm run build --workspace @visus/core && npm run typecheck --workspaces --if-present",
+    "schema": "npm run schema --workspace @visus/core",
     "fixture:large": "node scripts/create-large-fixture.mjs",
     "install:claude-skill": "node scripts/install-claude-skill.mjs",
-    "dev": "npm run dev --workspace @diff-vis/local",
-    "storybook": "npm run storybook --workspace @diff-vis/explorer",
-    "build-storybook": "npm run build-storybook --workspace @diff-vis/explorer"
+    "dev": "npm run dev --workspace @visus/local",
+    "storybook": "npm run storybook --workspace @visus/explorer",
+    "build-storybook": "npm run build-storybook --workspace @visus/explorer"
   },
   "engines": {
     "node": ">=22.12"

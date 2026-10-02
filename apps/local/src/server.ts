@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ReviewStore } from '@diff-vis/core';
+import type { ReviewStore } from '@visus/core';
 
 const explorerDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../packages/explorer/dist');
 
@@ -40,7 +40,7 @@ export async function startServer(store: ReviewStore, port: number, exportDir?: 
   });
   const timer = setInterval(() => { for (const client of clients) client.write('data: {"refresh":true}\n\n'); }, 5000);
   server.on('close', () => clearInterval(timer));
-  server.listen(port, '127.0.0.1', () => console.error(JSON.stringify({ event: 'diff_vis.server_started', address: `http://127.0.0.1:${port}` })));
+  server.listen(port, '127.0.0.1', () => console.error(JSON.stringify({ event: 'visus.server_started', address: `http://127.0.0.1:${port}` })));
 }
 
 async function latestSource(store: ReviewStore) { const report = await store.latestForRoot(); return report ? store.readSourceIndex(report.sourceId) : store.currentSource(); }

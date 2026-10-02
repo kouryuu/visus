@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ReviewStore } from '@diff-vis/core';
+import { ReviewStore } from '@visus/core';
 
 const run = promisify(execFile);
 const output = process.argv[2];

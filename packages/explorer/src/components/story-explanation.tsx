@@ -1,5 +1,5 @@
 import { ArrowRight, ArrowUpRight, Box, ChevronRight, FileCode2 } from 'lucide-react';
-import type { ChangeUnit, Report, Story } from '@diff-vis/core';
+import type { ChangeUnit, Report, Story } from '@visus/core';
 import { Button } from '@/components/motion/button/base';
 
 export function StoryExplanation({ story, entities, units, onInspect, editorAvailable }: {

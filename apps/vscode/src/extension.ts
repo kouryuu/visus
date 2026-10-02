@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ReviewStore, type Source } from '@diff-vis/core';
+import { ReviewStore, type Source } from '@visus/core';
 
 let activeStore: ReviewStore | undefined;
-const scheme = 'diff-vis-snapshot';
+const scheme = 'visus-snapshot';
 
 export function activate(context: vscode.ExtensionContext): void {
   const workspace = vscode.workspace.workspaceFolders?.[0];
@@ -14,11 +14,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const store = activeStore;
   const provider = new SnapshotProvider(store);
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(scheme, provider));
-  context.subscriptions.push(vscode.commands.registerCommand('diffVis.prepareReview', async () => {
+  context.subscriptions.push(vscode.commands.registerCommand('visus.prepareReview', async () => {
     try { const result = await store.prepare(); vscode.window.showInformationMessage(`Prepared ${result.source.units.length} change units for review.`); }
     catch (error) { void vscode.window.showErrorMessage(message(error)); }
   }));
-  context.subscriptions.push(vscode.commands.registerCommand('diffVis.openExplorer', () => openPanel(context, store, workspace.uri)));
+  context.subscriptions.push(vscode.commands.registerCommand('visus.openExplorer', () => openPanel(context, store, workspace.uri)));
   const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(workspace, '**/*'));
   const signal = (): void => { for (const panel of panels) panel.webview.postMessage({ type: 'refresh' }); };
   watcher.onDidChange(signal, undefined, context.subscriptions); watcher.onDidCreate(signal, undefined, context.subscriptions); watcher.onDidDelete(signal, undefined, context.subscriptions);
@@ -27,14 +27,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
 const panels = new Set<vscode.WebviewPanel>();
 function openPanel(context: vscode.ExtensionContext, store: ReviewStore, workspace: vscode.Uri): void {
-  const panel = vscode.window.createWebviewPanel('diffVis.explorer', 'Change Explorer', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')], retainContextWhenHidden: true });
+  const panel = vscode.window.createWebviewPanel('visus.explorer', 'visus · Change Explorer', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')], retainContextWhenHidden: true });
   panels.add(panel); panel.onDidDispose(() => panels.delete(panel));
   const media = vscode.Uri.joinPath(context.extensionUri, 'media');
   void readFile(path.join(context.extensionPath, 'media', 'index.html'), 'utf8').then((html) => {
     const nonce = randomNonce();
     let content = html.replace(/(src|href)="(\.\/assets\/[^\"]+)"/g, (_match, attribute: string, asset: string) => `${attribute}="${panel.webview.asWebviewUri(vscode.Uri.joinPath(media, asset.replace('./', '')))}"`);
     content = content.replace(/<script([^>]*)src="([^"]+)"([^>]*)><\/script>/g, `<script$1src="$2"$3 nonce="${nonce}"><\/script>`);
-    const bridge = `<script nonce="${nonce}">const vscode=acquireVsCodeApi();let seq=0;const pending=new Map();const listeners=new Set();window.diffVisBridge={getState:()=>request('state'),evidence:(sourceId,ref,side)=>request('evidence',{sourceId,ref,side}),subscribe:(fn)=>{listeners.add(fn);return()=>listeners.delete(fn)},openEvidence:(sourceId,ref)=>vscode.postMessage({type:'openEvidence',sourceId,ref})};function request(op,args={}){const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});vscode.postMessage({type:'request',id,op,...args})})}window.addEventListener('message',e=>{const m=e.data;if(m.type==='response'){const p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(new Error(m.error)):p.resolve(m.value)}if(m.type==='refresh')for(const fn of listeners)fn()});</script>`;
+    const bridge = `<script nonce="${nonce}">const vscode=acquireVsCodeApi();let seq=0;const pending=new Map();const listeners=new Set();window.visusBridge={getState:()=>request('state'),evidence:(sourceId,ref,side)=>request('evidence',{sourceId,ref,side}),subscribe:(fn)=>{listeners.add(fn);return()=>listeners.delete(fn)},openEvidence:(sourceId,ref)=>vscode.postMessage({type:'openEvidence',sourceId,ref})};function request(op,args={}){const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});vscode.postMessage({type:'request',id,op,...args})})}window.addEventListener('message',e=>{const m=e.data;if(m.type==='response'){const p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(new Error(m.error)):p.resolve(m.value)}if(m.type==='refresh')for(const fn of listeners)fn()});</script>`;
     content = content.replace('</head>', `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${panel.webview.cspSource} data:; style-src ${panel.webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' ${panel.webview.cspSource}; font-src ${panel.webview.cspSource};"></head>`).replace('<body>', `<body>${bridge}`);
     panel.webview.html = content;
   }).catch((error: unknown) => { panel.webview.html = `<html><body>Could not load the explorer: ${escapeHtml(message(error))}</body></html>`; });

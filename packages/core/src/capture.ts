@@ -59,7 +59,7 @@ export async function captureReview(options: CaptureOptions = {}): Promise<Sourc
     const beforeState = await stateFingerprint(top);
     const tracked = parseNameStatus(await git(top, ['diff', '--name-status', '-z', '--find-renames', mergeBase, '--']));
     const untrackedRaw = await git(top, ['ls-files', '--others', '--exclude-standard', '-z']);
-    const untracked = untrackedRaw.split('\0').filter((file) => file && !file.startsWith('.diff-vis/')).map((newPath) => ({ status: 'A', newPath }));
+    const untracked = untrackedRaw.split('\0').filter((file) => file && !file.startsWith('.visus/') && !file.startsWith('.diff-vis/')).map((newPath) => ({ status: 'A', newPath }));
     const byPath = new Map<string, { status: string; oldPath?: string; newPath: string }>();
     for (const file of tracked) byPath.set(file.newPath, file);
     for (const file of untracked) byPath.set(file.newPath, file);
@@ -134,7 +134,7 @@ async function stateFingerprint(root: string): Promise<string> {
   const status = await git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
   const head = await git(root, ['rev-parse', 'HEAD']);
   const diff = await git(root, ['diff', '--no-ext-diff', '--no-textconv', '--binary', 'HEAD', '--']);
-  const untracked = (await git(root, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter((file) => file && !file.startsWith('.diff-vis/'));
+  const untracked = (await git(root, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter((file) => file && !file.startsWith('.visus/') && !file.startsWith('.diff-vis/'));
   const contents = await Promise.all(untracked.map(async (file) => {
     const full = path.join(root, file); const info = await lstat(full);
     const bytes = info.isSymbolicLink() ? Buffer.from(await readlink(full)) : await readFile(full);

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { ChangeUnit, Report, Story } from '@diff-vis/core';
+import type { ChangeUnit, Report, Story } from '@visus/core';
 import { useState } from 'react';
 import { StoryExplanation } from '@/components/story-explanation';
 import { demoState } from '@/lib/demo';

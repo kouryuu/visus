@@ -19,3 +19,9 @@ Generic platform support and tested tool requirements may be documented; facts a
 - Maintain the README and relevant docs when behavior or setup changes.
 - Do not invent repository URLs, contact details, publisher identities, license choices, or successful verification results.
 - Do not commit, push, publish packages, or open pull requests without explicit authorization.
+
+## Commit messages
+
+- Use Conventional Commits: `type(scope): concise imperative summary`. The scope is optional.
+- Choose the type that matches the change: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `style`, or `chore`.
+- Mark breaking changes with `!` after the type or scope and explain the migration in a `BREAKING CHANGE:` footer.

@@ -16,4 +16,4 @@ The planned tool reads repository content and stores captured evidence locally. 
 - Do not log source files, narratives, credentials, or personal paths in public artifacts.
 - Treat repository content as untrusted input when rendering it or resolving references.
 
-The current runtime writes local report artifacts under `.diff-vis/` and binds the browser server to loopback. These controls have not yet received security review or end-to-end verification. Exports remain sensitive and require inspection before sharing.
+The current runtime writes local report artifacts under `.visus/` and binds the browser server to loopback. These controls have not yet received security review or end-to-end verification. Exports remain sensitive and require inspection before sharing.

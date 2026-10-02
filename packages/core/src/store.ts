@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -13,11 +14,16 @@ const run = promisify(execFile);
 export class ReviewStore {
   readonly root: string;
   readonly dir: string;
-  constructor(root: string) { this.root = path.resolve(root); this.dir = path.join(this.root, '.diff-vis'); }
+  constructor(root: string) {
+    this.root = path.resolve(root);
+    const current = path.join(this.root, '.visus');
+    const legacy = path.join(this.root, '.diff-vis');
+    this.dir = !existsSync(path.join(current, 'config.json')) && existsSync(path.join(legacy, 'config.json')) ? legacy : current;
+  }
 
   async initialize(): Promise<void> {
     const { stdout } = await run('git', ['--no-optional-locks', 'rev-parse', '--show-toplevel'], { cwd: this.root, encoding: 'utf8' });
-    if (path.resolve(stdout.trim()) !== this.root) throw new Error('Set --root to the Git worktree root before initializing diff-vis.');
+    if (path.resolve(stdout.trim()) !== this.root) throw new Error('Set --root to the Git worktree root before initializing visus.');
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
     await mkdir(path.join(this.dir, 'reviews'), { recursive: true, mode: 0o700 });
     await mkdir(path.join(this.dir, 'sources'), { recursive: true, mode: 0o700 });
@@ -25,7 +31,8 @@ export class ReviewStore {
     const { stdout: ignorePath } = await import('node:child_process').then(async ({ execFile }) => new Promise<{ stdout: string }>((resolve, reject) => execFile('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd: this.root, encoding: 'utf8' }, (error, stdout) => error ? reject(error) : resolve({ stdout }))));
     const file = path.resolve(this.root, ignorePath.trim());
     const prior = await readFile(file, 'utf8').catch(() => '');
-    if (!prior.split(/\r?\n/).includes('.diff-vis/')) await writeFile(file, `${prior}${prior.endsWith('\n') || !prior ? '' : '\n'}.diff-vis/\n`);
+    const storageIgnores = ['.visus/', '.diff-vis/'].filter((entry) => !prior.split(/\r?\n/).includes(entry));
+    if (storageIgnores.length) await writeFile(file, `${prior}${prior.endsWith('\n') || !prior ? '' : '\n'}${storageIgnores.join('\n')}\n`);
     await writeFile(path.join(this.dir, 'config.json'), json({ version: 1, base: null }), { flag: 'wx', mode: 0o600 }).catch((error: NodeJS.ErrnoException) => { if (error.code !== 'EEXIST') throw error; });
   }
 
@@ -89,7 +96,7 @@ export class ReviewStore {
     return reports.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   }
 
-  async publish(input: unknown): Promise<{ report: Report; coverage: { accounted: number; pending: string[]; excluded: number }; duplicate: boolean }> {
+  async publish(input: unknown, options: { dryRun?: boolean } = {}): Promise<{ report: Report; coverage: { accounted: number; pending: string[]; excluded: number }; duplicate: boolean }> {
     const update = PublishUpdateSchema.parse(input);
     const source = await this.readSourceIndex(update.sourceId);
     const scope = source.scope;
@@ -129,6 +136,7 @@ export class ReviewStore {
       validateReferences(report, source);
       const latestNow = await this.readLatest(scope);
       if ((latestNow?.revision ?? null) !== update.expectedRevision) throw new Error('Review changed during publication. The prior revision remains current; prepare and retry.');
+      if (options.dryRun) return { report, coverage: validation, duplicate: false };
       const revisions = path.join(this.scopeDir(scope), 'revisions'); await mkdir(revisions, { recursive: true, mode: 0o700 });
       const revisionPath = path.join(revisions, `${revision}.json`);
       await atomicWrite(revisionPath, json(report));

@@ -4,6 +4,7 @@ apps/vscode/media/
 packages/explorer/media/
 packages/explorer/storybook-static/
 coverage/
+.visus/
 .diff-vis/
 *.vsix
 .DS_Store

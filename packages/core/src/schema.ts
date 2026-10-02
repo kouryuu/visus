@@ -35,3 +35,7 @@ export type PublishUpdate = z.infer<typeof PublishUpdateSchema>;
 export function exportJsonSchema(): Record<string, unknown> {
   return z.toJSONSchema(ReportSchema, { target: 'draft-2020-12' }) as Record<string, unknown>;
 }
+
+export function exportUpdateJsonSchema(): Record<string, unknown> {
+  return z.toJSONSchema(PublishUpdateSchema, { target: 'draft-2020-12', io: 'input' }) as Record<string, unknown>;
+}
