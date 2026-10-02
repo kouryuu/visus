@@ -1,0 +1,5 @@
+{
+  "name": "visus-status",
+  "version": "0.1.0",
+  "description": "Adds a /visus command that shows the visus change story's status and stories in a pane"
+}

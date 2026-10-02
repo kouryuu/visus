@@ -41,7 +41,7 @@ try {
     }
     case 'check': {
       const result = await store.check(option('--scope'));
-      process.stdout.write(`${JSON.stringify({ status: result.status, revision: result.report?.revision ?? null, sourceId: result.report?.sourceId ?? null, pending: result.pending }, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify({ status: result.status, revision: result.report?.revision ?? null, sourceId: result.report?.sourceId ?? null, pending: result.pending, stories: (result.report?.stories ?? []).map((story) => ({ id: story.id, title: story.title, kinds: [...new Set(story.groups.map((group) => group.kind))] })) }, null, 2)}\n`);
       if (result.status !== 'fresh') process.exitCode = 1;
       break;
     }

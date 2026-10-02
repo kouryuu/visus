@@ -107,6 +107,16 @@ visus setup-claude --root /path/to/worktree
 
 This installs the skill family and merges local Claude hooks without replacing existing entries. MCP settings are only added when `--with-mcp` is passed; existing MCP configuration is preserved. Review generated integration files before committing them. The Stop hook directs repairs to `visus-hook`, allows at most two repair continuations per source-state key, and stops blocking sooner if `stop_hook_active` is set. It then reports the unresolved status.
 
+### Status mod
+
+[`integrations/claude/visus-status`](integrations/claude/visus-status) is an optional Claude Code mod (Claude Code v2.1.287 or newer). Its `/visus` command runs `visus check` and opens a `visus` pane: the review status, then each story's title with an emoji for each kind of change (🔧 implementation, 🧪 tests, 🔩 config, 📝 docs, 🧹 refactor, 📦 dependencies, 🤖 generated, 📎 other), and a legend. The pane sits beside the transcript in a wide fullscreen terminal and above the prompt otherwise; Esc closes it. Once the pane has been shown, file edits mark it as edited and it checks again when Claude's turn ends; the mod runs no checks before `/visus` is used. `visus check` includes each story's ID, title, and change kinds for this purpose. The mod needs the `visus` CLI on `PATH` (`npm link`). To load it for one session:
+
+```sh
+claude --plugin-dir /path/to/visus/integrations/claude/visus-status
+```
+
+Run `claude plugin test` from the mod's directory to run its tests. The tests pass; the mod has not yet been checked in a live session.
+
 ### Optional MCP adapter
 
 For agents that need a tool interface, opt in with `visus setup-claude --with-mcp --root /path/to/worktree`, or launch `visus mcp` through the agent's MCP configuration. The adapter exposes `prepare_review`, `publish_update`, `check_review`, and compact revision-pinned reads using the same core validation and storage as file publication.

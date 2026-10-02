@@ -1,0 +1,4 @@
+{
+  "description": "The visus-status hooks module",
+  "modules": ["./register.js"]
+}
