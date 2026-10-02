@@ -57,6 +57,14 @@ The review folder is `.diff-vis/`, ignored locally by `init`. It stores source s
 
 ## Claude Code producer
 
+To install only the `change-story` skill in a project, run:
+
+```sh
+npm run install:claude-skill -- --root /path/to/worktree
+```
+
+Omit `--root` to install into the current project, or use `--global` to make the skill available across local Claude Code projects. The installer preserves an existing skill file. The skill uses the diff-vis MCP server, which the full integration setup below configures.
+
 After building, run `npm link` from this checkout to make the CLI available on `PATH`, then install the integration:
 
 ```sh

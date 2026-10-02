@@ -15,6 +15,7 @@
     "typecheck": "npm run build --workspace @diff-vis/core && npm run typecheck --workspaces --if-present",
     "schema": "npm run schema --workspace @diff-vis/core",
     "fixture:large": "node scripts/create-large-fixture.mjs",
+    "install:claude-skill": "node scripts/install-claude-skill.mjs",
     "dev": "npm run dev --workspace @diff-vis/local",
     "storybook": "npm run storybook --workspace @diff-vis/explorer",
     "build-storybook": "npm run build-storybook --workspace @diff-vis/explorer"
