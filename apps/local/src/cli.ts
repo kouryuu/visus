@@ -89,18 +89,19 @@ async function runHook(reviewStore: ReviewStore, event: string): Promise<void> {
     retries[key] = count + 1;
     await import('node:fs/promises').then(({ writeFile }) => writeFile(retryFile, `${JSON.stringify(retries, null, 2)}\n`));
     const reason = result.status === 'incomplete' ? `Account for remaining change units: ${result.pending.join(', ')}.` : result.status === 'stale' ? 'Refresh the report against the current source before handoff.' : 'Prepare the comparison and publish stories before handoff.';
-    process.stdout.write(`${JSON.stringify({ decision: 'block', reason: `visus review is ${result.status}. ${reason}` })}\n`); return;
+    process.stdout.write(`${JSON.stringify({ decision: 'block', reason: `visus review is ${result.status}. Use the visus-hook skill. ${reason}` })}\n`); return;
   }
   process.stdout.write(`${JSON.stringify({ hookSpecificOutput: { additionalContext: `The review remains ${result.status} after two repair continuations. State the unresolved condition and leave the previous valid revision in place.` } })}\n`);
 }
 
 async function setupClaude(targetRoot: string, withMcp: boolean): Promise<void> {
-  const { mkdir, readFile, writeFile, copyFile } = await import('node:fs/promises');
-  const projectSkill = path.join(targetRoot, '.claude', 'skills', 'change-story', 'SKILL.md');
-  const bundledSkill = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../integrations/claude/change-story/SKILL.md');
-  await mkdir(path.dirname(projectSkill), { recursive: true });
-  try { await readFile(projectSkill); process.stdout.write('Existing change-story skill preserved.\n'); }
-  catch { await copyFile(bundledSkill, projectSkill); }
+  const { mkdir, readFile, writeFile } = await import('node:fs/promises');
+  const projectSkills = path.join(targetRoot, '.claude', 'skills');
+  const bundledSkills = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../integrations/claude');
+  await mkdir(projectSkills, { recursive: true });
+  for (const name of ['visus-change-story', 'visus-pr', 'visus-on-demand', 'visus-hook']) {
+    await cp(path.join(bundledSkills, name), path.join(projectSkills, name), { recursive: true, force: false });
+  }
   const settingsPath = path.join(targetRoot, '.claude', 'settings.local.json');
   const settings = JSON.parse(await readFile(settingsPath, 'utf8').catch(() => '{}')) as Record<string, unknown>;
   const hooks = (settings.hooks && typeof settings.hooks === 'object' ? settings.hooks : {}) as Record<string, Array<Record<string, unknown>>>;
@@ -122,5 +123,5 @@ async function setupClaude(targetRoot: string, withMcp: boolean): Promise<void> 
     if (!servers['visus']) servers['visus'] = { command: 'visus', args: ['mcp'] };
     mcp.mcpServers = servers; await writeFile(mcpPath, `${JSON.stringify(mcp, null, 2)}\n`);
   }
-  process.stdout.write(`Installed the change-story skill and merged local Claude hooks${withMcp ? '/MCP settings' : ''}. Existing entries were preserved.\n`);
+  process.stdout.write(`Installed the visus skill family and merged local Claude hooks${withMcp ? '/MCP settings' : ''}. Existing files and entries were preserved.\n`);
 }

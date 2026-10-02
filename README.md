@@ -79,17 +79,25 @@ The draft contains incremental updates. Complete story records replace stories w
 
 `validate` runs the same schema, reference, freshness, and revision checks as publication without saving a report. Its output includes coverage and pending references. Valid partial updates return `incomplete` and can be published while explanations are being written. Invalid input or stale source/revision returns a nonzero exit code. `check` requires a published, fresh, fully covered review and returns a nonzero exit code otherwise. Publication keeps atomic revision writes and the previous valid report on rejected input. Browser and VS Code viewers continue reading the published report; editing a draft does not replace it.
 
-Run `visus schema` to print the draft JSON Schema. The generated [update schema](packages/core/schema/update.schema.json) describes authoring input; the [report schema](packages/core/schema/report.schema.json) describes published output. The [change-story skill](integrations/claude/change-story/SKILL.md) includes a synthetic draft example and authoring instructions.
+Run `visus schema` to print the draft JSON Schema. The generated [update schema](packages/core/schema/update.schema.json) describes authoring input; the [report schema](packages/core/schema/report.schema.json) describes published output. The [visus-change-story skill](integrations/claude/visus-change-story/SKILL.md) routes to focused workflows with shared authoring instructions and an optional synthetic example.
+
+Choose the workflow directly to load only the instructions needed:
+
+- `/visus-on-demand`: generate a review for local changes or a selected base. `--base HEAD` captures uncommitted changes; another base captures changes from its merge base with `HEAD`, including local edits and non-ignored untracked files.
+- `/visus-pr`: resolve a PR's exact head/base commits, prepare a clean local worktree, and generate its review. This is an agent workflow using local capture; visus has no native PR URL ingestion or fetching command.
+- `/visus-hook`: set up requested hooks or repair the review when a hook requests it. Hooks signal work and check status; the agent writes the explanations.
+
+The shared contract covers preparation, incremental publication, coverage, and freshness. The JSON example and MCP instructions load only when needed. Published reports live under `.visus/reviews/<scope>/revisions/<revision>.json` (or the existing legacy `.diff-vis/` store); drafts remain separate files.
 
 ## Claude Code producer
 
-To install only the `change-story` skill in a project, run:
+To install the `visus-change-story` router and its three workflow skills without hooks, run:
 
 ```sh
 npm run install:claude-skill -- --root /path/to/worktree
 ```
 
-Omit `--root` to install into the current project, or use `--global` to make the skill available across local Claude Code projects. The installer preserves an existing skill file. The skill uses the file/CLI workflow by default. Existing installed skills are preserved, so review and refresh an older MCP-based skill when migrating.
+Omit `--root` to install into the current project, or use `--global` to make the skills available across local Claude Code projects. Both installers copy the full skill family and its references, filling missing files while preserving existing files. The skills use the file/CLI workflow by default. When migrating, compare installed files with `integrations/claude/` and refresh older instructions deliberately; rerunning installation does not overwrite customized skills. An older installed `/change-story` skill is left untouched; remove it manually once any custom guidance has been migrated to `/visus-*`.
 
 After building, run `npm link` from this checkout to make the CLI available on `PATH`, then install the integration:
 
@@ -97,7 +105,7 @@ After building, run `npm link` from this checkout to make the CLI available on `
 visus setup-claude --root /path/to/worktree
 ```
 
-This installs the `change-story` skill when absent and merges local Claude hooks without replacing existing entries. MCP settings are only added when `--with-mcp` is passed; existing MCP configuration is preserved. Review generated integration files before committing them. The Stop hook allows two repair continuations per source state and then reports the unresolved status.
+This installs the skill family and merges local Claude hooks without replacing existing entries. MCP settings are only added when `--with-mcp` is passed; existing MCP configuration is preserved. Review generated integration files before committing them. The Stop hook directs repairs to `visus-hook`, allows at most two repair continuations per source-state key, and stops blocking sooner if `stop_hook_active` is set. It then reports the unresolved status.
 
 ### Optional MCP adapter
 

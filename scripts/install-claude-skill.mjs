@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { constants } from 'node:fs';
-import { copyFile, mkdir, stat } from 'node:fs/promises';
+import { cp, mkdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,13 +19,10 @@ else throw new Error(usage);
 
 if (!(await stat(root)).isDirectory()) throw new Error(`Not a directory: ${root}`);
 
-const source = fileURLToPath(new URL('../integrations/claude/change-story/SKILL.md', import.meta.url));
-const target = path.join(root, '.claude', 'skills', 'change-story', 'SKILL.md');
-await mkdir(path.dirname(target), { recursive: true });
-try {
-  await copyFile(source, target, constants.COPYFILE_EXCL);
-  process.stdout.write('Installed the change-story skill for Claude Code.\n');
-} catch (error) {
-  if (error.code !== 'EEXIST') throw error;
-  process.stdout.write('Existing change-story skill preserved.\n');
+const source = fileURLToPath(new URL('../integrations/claude/', import.meta.url));
+const target = path.join(root, '.claude', 'skills');
+await mkdir(target, { recursive: true });
+for (const name of ['visus-change-story', 'visus-pr', 'visus-on-demand', 'visus-hook']) {
+  await cp(path.join(source, name), path.join(target, name), { recursive: true, force: false });
 }
+process.stdout.write('Installed the visus skill family for Claude Code. Existing files were preserved.\n');
