@@ -1,8 +1,41 @@
-# <img src="packages/explorer/src/assets/visus-icon.svg" width="40" alt="" /> visus
+<p align="center">
+  <img src="packages/explorer/src/assets/visus-icon.svg" width="96" alt="visus logo: a blue neon eye" />
+</p>
 
-An agent-authored, visual guide to large code changes. Review the story first, then open captured evidence in a local browser or VS Code.
+<h1 align="center">visus</h1>
 
-Implementation is underway from the accepted six-milestone plan. The workspace now includes the shared contracts and core, file-based CLI/browser runtime, optional MCP adapter, React explorer, VS Code extension, Claude Code integration files, and portable export. Runtime verification and real-host acceptance checks are still pending; release infrastructure remains undecided.
+<p align="center"><strong>Review the story before the diff.</strong></p>
+
+<p align="center">
+  Agent-written, visual guides to large code changes. Understand what changed and why, then jump straight to the code. Local-first, in your browser or VS Code.
+</p>
+
+<p align="center">
+  <img src="assets/visus-explorer.png" width="900" alt="The visus explorer showing a list of change stories and a connected diagram of the areas one story affects, using a synthetic sample project" />
+</p>
+
+<p align="center"><sub>Synthetic sample review rendered by the explorer's demo mode.</sub></p>
+
+## Why visus
+
+Large changes, especially agent-written ones, arrive as hundreds of files. A file-by-file diff shows *what* moved but not *why*, so reviewers skim and miss things.
+
+- **Stories, not file lists.** Changes are grouped into plain-language stories, each with its outcome first and the reasoning behind it one click away.
+- **See what it touches.** A connected diagram shows the areas a story affects and how they relate, marking direct and inferred links.
+- **Nothing slips through.** Every change must be explained or explicitly excluded. Unexplained changes stay visible, and a review goes stale when the source moves.
+- **Straight to the evidence.** Open any reference to the captured before/after code, in the browser or as a native diff in VS Code.
+- **Local-first.** Reviews are plain files under `.visus/`. There is no hosted service, and the tool does not fetch, stage, or execute your project code.
+
+## How it works
+
+1. `visus prepare` inspects your Git worktree and writes a draft listing every change.
+2. Your agent fills in the draft with stories, relationships, and exclusions, guided by the bundled Claude Code skills.
+3. `visus validate` and `visus publish` check coverage and freshness, then save an immutable report revision.
+4. You read the story in the browser explorer or VS Code, and open the evidence behind any claim.
+
+## Status
+
+Implementation is underway from the accepted six-milestone plan. The workspace includes the shared contracts and core, the file-based CLI and browser runtime, an optional MCP adapter, the React explorer, a VS Code extension, Claude Code integration files, and portable export. Runtime verification and real-host acceptance checks are still pending; release infrastructure remains undecided.
 
 ## Requirements
 
