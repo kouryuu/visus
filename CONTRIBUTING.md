@@ -1,6 +1,6 @@
 # Contributing
 
-The project contains a TypeScript/npm-workspace implementation. License selection and release infrastructure are pending. Do not assume a public package or CI release flow exists.
+The project contains a TypeScript/npm-workspace implementation. The project is licensed under Apache-2.0; release infrastructure is pending. Do not assume a public package or CI release flow exists.
 
 ## Before changing the design
 
@@ -26,7 +26,7 @@ For implementation changes, run the available cheap checks and targeted behavior
 
 ## Release checklist
 
-- Select and add a project license and review dependency licenses.
+- Review dependency licenses and include their required notices in release artifacts.
 - Configure a private vulnerability-reporting channel without publishing personal contact details.
 - Document reproducible setup, usage, configuration, troubleshooting, and uninstall steps.
 - Verify the browser and installed extension against documented supported versions.

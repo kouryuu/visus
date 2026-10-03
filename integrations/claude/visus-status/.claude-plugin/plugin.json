@@ -1,5 +1,7 @@
 {
   "name": "visus-status",
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": { "name": "Rodrigo Reyes" },
   "description": "Adds a /visus command that shows the visus change story's status and stories in a pane"
 }

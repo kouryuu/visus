@@ -1,6 +1,8 @@
 {
   "name": "visus",
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "Rodrigo Reyes",
   "private": true,
   "bin": {
     "visus": "./apps/local/dist/cli.js"

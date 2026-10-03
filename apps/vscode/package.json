@@ -4,6 +4,8 @@
   "icon": "icon.png",
   "description": "Explore agent-authored change stories and snapshot evidence.",
   "version": "0.2.0",
+  "license": "Apache-2.0",
+  "author": "Rodrigo Reyes",
   "private": true,
   "engines": { "vscode": "^1.95.0" },
   "main": "./dist/extension.js",

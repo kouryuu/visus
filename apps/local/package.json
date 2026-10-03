@@ -1,6 +1,8 @@
 {
   "name": "@visus/local",
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "Rodrigo Reyes",
   "type": "module",
   "bin": { "visus": "./dist/cli.js" },
   "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "dev": "vite --config ../../packages/explorer/vite.config.ts --host 127.0.0.1" },

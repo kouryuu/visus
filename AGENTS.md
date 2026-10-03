@@ -10,6 +10,8 @@ Do not include any personal or environment-specific details in repository conten
 - Keep actual review data local and untracked. Do not publish real reports as examples. Explicit exports may still contain sensitive source data and require review before sharing.
 - Inspect public artifacts for accidental disclosure before proposing publication. Do not claim that a content check guarantees absence of secrets.
 
+The only permitted exception is the project author's name, "Rodrigo Reyes", used solely for copyright and attribution in `LICENSE`, `NOTICE`, and the `license`/`author` metadata of package manifests. It must not appear in examples, fixtures, tests, logs, or generated review content, and no other personal detail (email, handle, contact, path) is covered by this exception.
+
 Generic platform support and tested tool requirements may be documented; facts about an individual's machine may not.
 
 ## Scope and accuracy

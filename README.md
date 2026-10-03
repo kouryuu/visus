@@ -2,7 +2,7 @@
 
 An agent-authored, visual guide to large code changes. Review the story first, then open captured evidence in a local browser or VS Code.
 
-Implementation is underway from the accepted six-milestone plan. The workspace now includes the shared contracts and core, file-based CLI/browser runtime, optional MCP adapter, React explorer, VS Code extension, Claude Code integration files, and portable export. Runtime verification and real-host acceptance checks are still pending; licensing and release infrastructure remain undecided.
+Implementation is underway from the accepted six-milestone plan. The workspace now includes the shared contracts and core, file-based CLI/browser runtime, optional MCP adapter, React explorer, VS Code extension, Claude Code integration files, and portable export. Runtime verification and real-host acceptance checks are still pending; release infrastructure remains undecided.
 
 ## Requirements
 
@@ -146,4 +146,8 @@ After building, run `npm run fixture:large -- /path/to/new-fixture` with a new o
 - [Bionic eye icon](packages/explorer/src/assets/README.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
-Public repository content must use synthetic examples and repository-relative paths. No license, private vulnerability-reporting channel, or public release has been selected.
+Public repository content must use synthetic examples and repository-relative paths. No private vulnerability-reporting channel or public release has been selected.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). Redistributions must keep the [NOTICE](NOTICE) file's attribution to Rodrigo Reyes.
