@@ -12,6 +12,34 @@ The prohibition on personal or environment-specific details is a hard rule. Use 
 
 Include only the information necessary to reproduce a problem. Review attachments and generated output before sharing. Report suspected sensitive disclosures through a private channel, not a public issue; see [SECURITY.md](SECURITY.md).
 
+## Development setup
+
+```sh
+npm install
+npm run build
+npm run typecheck
+```
+
+The packages use npm workspaces and the lockfile pins the resolved dependency tree. `npm run build` builds the shared core, browser explorer, local tools, and VS Code extension assets. There is no repository-wide test script yet.
+
+For frontend development, run the review service and Vite in separate terminals. Vite forwards `/api` requests to the local review service on port 4317:
+
+```sh
+# Terminal 1, from the visus checkout
+node apps/local/dist/cli.js serve --root /path/to/worktree
+
+# Terminal 2, from the visus checkout
+npm run dev
+```
+
+Open the Vite URL printed in the second terminal. Build first with `npm run build`; the review service reads the built explorer assets when serving the regular local review URL.
+
+To preview the explorer with synthetic review content, start Vite with `DEMO_MODE=1 npm run dev`. The sample checkout review includes six connected stories across implementation, tests, configuration, refactor, and docs, with before/after excerpts for fourteen files, two unexplained changes, and one generated-file exclusion. Demo mode is labeled in the page and does not call the local review API. Restart with `npm run dev` to return to live review data.
+
+Run `npm run storybook` to view the explorer's beUI controls and evidence panel stories at `http://localhost:6006`. Build the static Storybook with `npm run build-storybook`. Generated Storybook output is excluded from the explorer's dev watcher, so rebuilding previews does not trigger unrelated page reloads.
+
+To exercise a large review, run `npm run fixture:large -- /path/to/new-fixture` with a new output directory. It generates 200 synthetic files, 2,000 change units, and 100 illustrative stories. The fixture is not created in this repository, and performance measurements have not yet been recorded.
+
 ## Implementation workflow
 
 When implementation begins, keep changes focused, preserve existing conventions, update relevant documentation, and avoid speculative abstractions. Use the shared core and reusable explorer across hosts rather than duplicating their behavior.

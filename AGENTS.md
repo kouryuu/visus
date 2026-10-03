@@ -26,4 +26,5 @@ Generic platform support and tested tool requirements may be documented; facts a
 
 - Use Conventional Commits: `type(scope): concise imperative summary`. The scope is optional.
 - Choose the type that matches the change: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `style`, or `chore`.
+- Do not add `Co-Authored-By` or other tool-attribution trailers to commit messages or pull request descriptions.
 - Mark breaking changes with `!` after the type or scope and explain the migration in a `BREAKING CHANGE:` footer.
